@@ -18,6 +18,8 @@ apply plugin: 'groovy'
 
 project.group = 'com.rocana.gradle'
 project.version = '1.0.0-SNAPSHOT'
+project.sourceCompatibility = '1.7'
+project.targetCompatibility = '1.7'
 
 repositories {
   mavenCentral()
