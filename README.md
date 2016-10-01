@@ -45,7 +45,7 @@ avro {
   /*
    * Enable Avro code generation for the main source set.
    * Files in src/main/avro will be compiled into Java
-   * and stored in $buildDir/generated-avro-main/..
+   * and stored in $buildDir/generated-avro-main/.
    */
   main {
   }
