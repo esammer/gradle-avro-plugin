@@ -84,6 +84,9 @@ The default is false.
 templates during code generation. By default, the Avro-included Velocity
 templates are used.
 
+`sourceDirectory` (File) - The directory containing the Avro source schemas. The
+default is `src/$name/avro` where `$name` is the name of a source set.
+
 `generatedSourceDirectory` (File) - The directory into which generated code is
 written. The default is to use `$buildDir/generated-avro-$name` where `$name`
 is the name of the source set.
