@@ -15,11 +15,7 @@
  */
 
 apply plugin: 'groovy'
-
-project.group = 'com.rocana.gradle'
-project.version = '1.0.0-SNAPSHOT'
-project.sourceCompatibility = '1.7'
-project.targetCompatibility = '1.7'
+apply plugin: 'maven'
 
 repositories {
   mavenCentral()
@@ -31,4 +27,38 @@ dependencies {
 
   compile "org.apache.avro:avro:1.7.6"
   compile "org.apache.avro:avro-compiler:1.7.6"
+}
+
+uploadArchives {
+  repositories {
+    mavenDeployer {
+      String repoId = 'com.scalingdata.releases'
+
+      if (project.version.endsWith('-SNAPSHOT')) {
+        repoId = 'com.scalingdata.snapshots'
+      }
+
+      repository(url: "http://repository.rocana.com/content/repositories/$repoId/") {
+        if (project.hasProperty('repository.username') && project.hasProperty('repository.password')) {
+          authentication(userName: project.property('repository.username'), password: project.property('repository.password'))
+        }
+
+        pom.project {
+          licenses {
+            license {
+              name 'The Apache License, Version 2.0'
+              url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+            }
+          }
+
+          scm {
+            connection 'scm:git:git@github.com:scalingdata/gradle-avro-plugin.git'
+            developerConnection 'scm:git:git@github.com:scalingdata/gradle-avro-plugin.git'
+            url 'https://github.com/scalingdata/gradle-avro-plugin'
+            tag 'master'
+          }
+        }
+      }
+    }
+  }
 }
