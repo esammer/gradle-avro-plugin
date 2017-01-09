@@ -167,7 +167,6 @@ class AvroCompileTask extends SourceTask {
 
     idlProtocol.types.each { schema ->
       logger.info("Defined type: {}", schema.getName())
-      types.put(schema.getName(), schema)
     }
 
     toCompile.put(file, idlProtocol)
