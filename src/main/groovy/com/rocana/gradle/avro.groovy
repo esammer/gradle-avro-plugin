@@ -16,14 +16,17 @@
 
 package com.rocana.gradle
 
+import org.apache.avro.Protocol
 import org.apache.avro.Schema
 import org.apache.avro.SchemaParseException
+import org.apache.avro.compiler.idl.Idl
 import org.apache.avro.compiler.specific.SpecificCompiler
 import org.apache.avro.generic.GenericData
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.SourceTask
 import org.gradle.api.tasks.TaskAction
@@ -48,7 +51,7 @@ class AvroPlugin implements Plugin<Project> {
           compileTaskName = "compile${container.name.capitalize()}Java"
         }
 
-        File sourceDirectory = container.sourceDirectory ?: new File(project.projectDir, "src/${container.name}/avro")
+        ConfigurableFileCollection sourceDirectory = container.sourceDirectory ?: project.files(new File(project.projectDir, "src/${container.name}/avro"))
         File generatedSourceDirectory = container.generatedSourceDirectory ?: new File(project.buildDir, "generated-avro-${container.name}")
 
         // Create an Avro task for each config specified.
@@ -85,7 +88,7 @@ class AvroContainer {
   String fieldVisibility
   String stringType
   File templateDirectory
-  File sourceDirectory
+  ConfigurableFileCollection sourceDirectory
   File generatedSourceDirectory
 
   AvroContainer(String name) {
@@ -117,41 +120,26 @@ class AvroCompileTask extends SourceTask {
   }
 
   @TaskAction
-  def compile() {
+  void compile() {
     logger.info("Compiling {} files to {}", source.size(), generatedSourceDirectory)
 
     Deque<File> toProcess = new ArrayDeque<>(source.getFiles())
     Map<String, Schema> types = new HashMap<>()
-    Map<File, Schema> toCompile = new HashMap<>()
+    Map<String, Object> toCompile = new HashMap<>()
 
     stringType = GenericData.StringType.valueOf(stringType)
 
     while (!toProcess.isEmpty()) {
       File file = toProcess.pop()
 
-      logger.info("Loading Avro schema file: {}. Known types: {}", file, types.keySet())
-
-      def parser = new Schema.Parser()
-      parser.addTypes(types)
-
-      Schema schema
-
-      try {
-        schema = parser.parse(file)
-
-        types.put(schema.name, schema)
-        toCompile.put(file, schema)
-      } catch (SchemaParseException e) {
-        if (e.getMessage().contains("not a defined name")) {
-          logger.debug("Unknown type {} found - requeuing for parsing later.", e.getMessage())
-          toProcess.add(file)
-        } else {
-          throw e
-        }
+      if (file.getName().endsWith(".avsc")) {
+        parseSchema(file, types, toCompile, toProcess)
+      } else if (file.getName().endsWith(".avdl")) {
+        parseIdl(file, types, toCompile)
       }
     }
 
-    toCompile.each { Map.Entry<File, Schema> entry ->
+    toCompile.each { entry ->
       logger.info("Compiling Avro file {}", entry.getKey())
 
       SpecificCompiler compiler = new SpecificCompiler(entry.getValue())
@@ -168,6 +156,46 @@ class AvroCompileTask extends SourceTask {
       }
 
       compiler.compileToDestination(entry.getKey(), generatedSourceDirectory)
+    }
+  }
+
+  private void parseIdl(File file, types, HashMap<String, Object> toCompile) {
+    logger.debug("Loading Avro IDL file: {}", file)
+
+    Idl idlParser = new Idl(file)
+    Protocol idlProtocol = idlParser.CompilationUnit()
+
+    idlProtocol.types.each { schema ->
+      logger.info("Defined type: {}", schema.getName())
+      types.put(schema.getName(), schema)
+    }
+
+    toCompile.put(file, idlProtocol)
+  }
+
+  private void parseSchema(File file, HashMap<String, Schema> types, HashMap<String, Object> toCompile, ArrayDeque<File> toProcess) {
+    logger.info("Loading Avro schema file: {}. Known types: {}", file, types.keySet())
+
+    def parser = new Schema.Parser()
+    parser.addTypes(types)
+
+    Schema schema
+
+    try {
+      schema = parser.parse(file)
+
+      logger.info("Defined type: {}", schema.getName())
+      types.put(schema.name, schema)
+      toCompile.put(file, schema)
+    } catch (SchemaParseException e) {
+      String message = e.getMessage()
+
+      if (message.contains("not a defined name") || message.contains("Undefined name")) {
+        logger.debug("Unknown type {} found - requeuing for parsing later.", message)
+        toProcess.add(file)
+      } else {
+        throw e
+      }
     }
   }
 
