@@ -142,9 +142,9 @@ class AvroCompileTask extends SourceTask {
         types.put(schema.name, schema)
         toCompile.put(file, schema)
       } catch (SchemaParseException e) {
-        if (e.getMessage().matches("unknown type")) {
+        if (e.getMessage().contains("not a defined name")) {
           logger.debug("Unknown type {} found - requeuing for parsing later.", e.getMessage())
-          toProcess.push(file)
+          toProcess.add(file)
         } else {
           throw e
         }
