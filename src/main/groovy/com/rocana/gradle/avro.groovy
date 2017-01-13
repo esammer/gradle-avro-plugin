@@ -51,7 +51,7 @@ class AvroPlugin implements Plugin<Project> {
           compileTaskName = "compile${container.name.capitalize()}Java"
         }
 
-        ConfigurableFileCollection sourceDirectory = container.sourceDirectory ?: project.files(new File(project.projectDir, "src/${container.name}/avro"))
+        ConfigurableFileCollection sourceDirectory = container.sourceDirectory ?: project.files(project.fileTree(new File(project.projectDir, "src/${container.name}/avro")))
         File generatedSourceDirectory = container.generatedSourceDirectory ?: new File(project.buildDir, "generated-avro-${container.name}")
 
         // Create an Avro task for each config specified.
